@@ -1,5 +1,5 @@
 <template>
-  <HelloWorld />
+  <local-weather />
 </template>
 
 <script lang="ts" setup>
