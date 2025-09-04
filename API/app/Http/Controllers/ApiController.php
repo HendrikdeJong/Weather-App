@@ -2,161 +2,197 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Weather;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
-use Exception;
+use App\Models\DailyForecast;
+use App\Models\HourlyForecast;
 
 class ApiController extends Controller
 {
-    public function getWeatherforecast(Request $request)
+    public function getCurrentWeather(Request $request)
     {
-        $validated = $request->validate([
-            'lat'  => 'required_without:city|numeric',
-            'lon'  => 'required_without:city|numeric',
+        $location = $this->resolveLocation($request->validate($this->validationRules()));
+
+        $weather = $this->getCachedWeather(HourlyForecast::class, $location);
+
+        if (!$weather) {
+            $weather = $this->fetchAndCacheWeather(HourlyForecast::class, $location);
+            if (!$weather) {
+                return $this->errorResponse();
+            }
+        }
+
+        return response()->json($weather);
+    }
+
+    public function getWeatherForecast(Request $request)
+    {
+        $location = $this->resolveLocation($request->validate($this->validationRules()));
+
+        $weather = $this->getCachedWeather(DailyForecast::class, $location, true);
+
+        if (!$weather) {
+            $weather = $this->fetchAndCacheWeather(DailyForecast::class, $location);
+            if (!$weather) {
+                return $this->errorResponse();
+            }
+        }
+
+        return response()->json($weather);
+    }
+
+    /* ----------------- Helpers ----------------- */
+
+    private function validationRules(): array
+    {
+        return [
+            'lat' => 'required_without:city|numeric',
+            'lon' => 'required_without:city|numeric',
             'city' => 'required_without_all:lat,lon|string',
+        ];
+    }
+
+    private function getCachedWeather(string $model, string $location, bool $expireHourly = false)
+    {
+        $query = $model::where("location", $location);
+
+        if ($expireHourly) {
+            $query->where(function ($q) {
+                $q->whereNull('created_at')
+                    ->orWhere('created_at', '>=', now()->subHour());
+            });
+        }
+
+        $weather = $query->first();
+
+        // If exists but expired, ignore it
+        if ($expireHourly && $weather?->created_at < now()->subHour()) {
+            return null;
+        }
+
+        return $weather;
+    }
+
+    private function fetchAndCacheWeather(string $model, string $location)
+    {
+        $data = $this->fetchApiData($location);
+
+        if (!$data) {
+            return null;
+        }
+
+        $forecasts = match ($model) {
+            HourlyForecast::class => $this->mapHourlyForecasts($data, $location),
+            DailyForecast::class => $this->mapDailyForecasts($data, $location),
+        };
+
+        if (!empty($forecasts)) {
+            foreach ($forecasts as $forecast) {
+                $model::firstOrCreate(
+                    [
+                        'location' => $forecast['location'],
+                        'time' => $forecast['time'], // unique per hour/day
+                    ],
+                    $forecast
+                );
+            }
+        }
+
+        return $forecasts;
+    }
+
+
+    private function fetchApiData(string $location): ?array
+    {
+        $apiKey = config('services.tomorrowio.key');
+
+        $response = Http::withOptions(['verify_host' => false])->get("https://api.tomorrow.io/v4/weather/forecast", [
+            'location' => $location,
+            'apikey' => $apiKey,
         ]);
 
-        try {
-            // Debug: log incoming request
-            Log::debug("Incoming weather request", $validated);
-
-            // Determine location key
-            if (isset($validated['lat']) && isset($validated['lon'])) {
-                $lat = $validated['lat'];
-                $lon = $validated['lon'];
-                $queryLocation = "{$lat},{$lon}";
-                $location = $this->getlocation($lat, $lon);
-                Log::debug("Resolved coordinates to location", $location);
-            } else {
-                $queryLocation = $validated['city'];
-                $location = $queryLocation;
-                Log::debug("Using city name for query", ['city' => $queryLocation]);
-            }
-
-            $locationKey = is_array($location) ? "{$location['lat']},{$location['lon']}" : $location;
-            Log::debug("Final locationKey", ['locationKey' => $locationKey]);
-
-            // Check DB cache
-            $weather = Weather::where('location', $locationKey)->latest()->first();
-
-            if ($weather && $weather->created_at->gt(now()->subHour())) {
-                Log::info("Serving weather data from cache", ['location' => $locationKey]);
-                return response()->json([
-                    'source' => 'cache',
-                    'data'   => json_decode($weather->data, true),
-                ]);
-            }
-
-            // Fetch new weather data
-            $apiData = $this->fetchNewWeatherData($locationKey);
-
-            if (!$apiData) {
-                Log::error("Weather API returned no data", ['location' => $locationKey]);
-                return response()->json(['error' => 'Unable to fetch weather data'], 500);
-            }
-
-            // Save or update DB
-            Weather::updateOrCreate(
-                ['location' => $locationKey],
-                [
-                    'data'       => json_encode($apiData),
-                    'updated_at' => now(),
-                ]
-            );
-
-            Log::info("Weather data saved to DB", ['location' => $locationKey]);
-
-            return response()->json([
-                'source' => 'api',
-                'data'   => $apiData,
-            ]);
-
-        } catch (Exception $e) {
-            Log::error("Weather API error: " . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
-            return response()->json([
-                'error' => 'Something went wrong while fetching the weather forecast.'
-            ], 500);
-        }
+        return $response->successful() ? $response->json() : null;
     }
 
-    private function fetchNewWeatherData(string $locationKey): ?array
+    private function mapHourlyForecasts(array $data, string $location): array
     {
-        try {
-           $response = Http::timeout(10)
-            ->withOptions(['verify' => false])
-            ->get("https://api.tomorrow.io/v4/weather/forecast", [
-                'location' => $locationKey,
-                'apikey'   => env("API_KEY"),
-            ]);
+        $results = [];
 
-            if ($response->failed()) {
-                // log + return the real error
-                Log::error("Tomorrow.io API failed", [
-                    'status' => $response->status(),
-                    'body'   => $response->body(),
-                ]);
-
-                return [
-                    'error'  => 'Tomorrow.io API error',
-                    'status' => $response->status(),
-                    'body'   => $response->json(),
-                ];
+        foreach ($data['timelines']['hourly'] ?? [] as $hourly) {
+            if (!isset($hourly['time'])) {
+                continue;
             }
 
-            return $response->json();
-
-        } catch (Exception $e) {
-            Log::error("Tomorrow.io API exception: " . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
-            return [
-                'error' => 'Exception while calling Tomorrow.io',
-                'message' => $e->getMessage()
+            $attributes = [
+                'location' => $location,
+                'time' => $hourly['time'], // already an ISO datetime string
             ];
+
+            if (isset($hourly['values']) && is_array($hourly['values'])) {
+                $filteredValues = array_diff_key($hourly['values'], array_flip(['location', 'time']));
+                $attributes = array_merge($attributes, $filteredValues);
+            }
+
+            $results[] = $attributes;
         }
+
+        return $results;
     }
 
 
-    private function getlocation(string $lat, string $lon): array
+    private function mapDailyForecasts(array $data, string $location): array
     {
-        try {
-            Log::debug("Resolving location with OpenStreetMap", ['lat' => $lat, 'lon' => $lon]);
+        $results = [];
 
-            $response = Http::timeout(10)->get("https://nominatim.openstreetmap.org/reverse", [
-                'format' => 'jsonv2',
-                'lat'    => $lat,
-                'lon'    => $lon,
-            ]);
-
-            if ($response->failed()) {
-                Log::warning("OpenStreetMap API failed", [
-                    'status' => $response->status(),
-                    'body'   => $response->body()
-                ]);
-                return ['lat' => $lat, 'lon' => $lon];
+        foreach ($data['timelines']['daily'] ?? [] as $daily) {
+            if (!isset($daily['time'])) {
+                continue;
             }
 
-            $data = $response->json();
-            Log::debug("OpenStreetMap API response", $data);
-
-            return [
-                'lat'          => $data['lat'] ?? $lat,
-                'lon'          => $data['lon'] ?? $lon,
-                'town'         => $data['address']['town'] ?? null,
-                'state'        => $data['address']['state'] ?? null,
-                'village'      => $data['address']['village'] ?? null,
-                'country'      => $data['address']['country'] ?? null,
-                'municipality' => $data['address']['municipality'] ?? null,
+            $attributes = [
+                'location' => $location,
+                'time' => $daily['time'], // use "time", not "date" to match fillable
             ];
-        } catch (Exception $e) {
-            Log::error("OpenStreetMap API exception: " . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
-            return ['lat' => $lat, 'lon' => $lon];
+
+            if (isset($daily['values']) && is_array($daily['values'])) {
+                $filteredValues = array_diff_key($daily['values'], array_flip(['location', 'time']));
+                $attributes = array_merge($attributes, $filteredValues);
+            }
+
+            $results[] = $attributes;
         }
+
+        return $results;
+    }
+
+
+    private function resolveLocation(array $validated): ?string
+    {
+        if (isset($validated['city'])) {
+            return strval($validated['city']);
+        }
+
+        if (isset($validated['lat'], $validated['lon'])) {
+            return $this->fetchLatLonLocation($validated['lat'], $validated['lon']);
+        }
+
+        return null;
+    }
+
+    private function fetchLatLonLocation(float $lat, float $lon): ?string
+    {
+        $response = Http::withOptions(['verify_host' => false,])->get("https://nominatim.openstreetmap.org/reverse", [
+            'lat' => $lat,
+            'lon' => $lon,
+        ]);
+
+        return $response->successful()
+            ? $response->json()['address']['city'] ?? null
+            : null;
+    }
+
+    private function errorResponse()
+    {
+        return response()->json(['error' => 'Unable to fetch weather data'], 500);
     }
 }

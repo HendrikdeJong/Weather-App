@@ -1,0 +1,20 @@
+{
+  "folders": [
+    {
+      "name": "Github Settings",
+      "path": "../.github"
+    },
+    {
+      "name": "Main",
+      "path": ".."
+    },
+    {
+      "name": "Api",
+      "path": "../API"
+    },
+    {
+      "name": "Front End",
+      "path": "../frontend"
+    }
+  ]
+}

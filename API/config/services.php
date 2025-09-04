@@ -34,5 +34,8 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'tomorrowio' => [
+        'key' => env('TOMORROWIO_API_KEY'),
+    ],
 
 ];
