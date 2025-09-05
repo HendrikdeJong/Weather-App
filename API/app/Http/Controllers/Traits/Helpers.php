@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Traits;
 
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\JsonResponse;
 
 trait Helpers
 {
@@ -20,25 +20,16 @@ trait Helpers
     }
 
     /**
-     * will return a standardized error response
-     * @return \Illuminate\Http\JsonResponse
+     * Standardized error response, optionally including debug info
      */
-    private function errorResponse()
+    private function errorResponse(string $message = 'Unable to fetch weather data', array $debug = []): JsonResponse
     {
-        return response()->json(['error' => 'Unable to fetch weather data'], 500);
+        $response = ['error' => $message];
+
+        if (!empty($debug)) {
+            $response['_debug'] = $debug;
+        }
+
+        return response()->json($response, 500);
     }
-
-    /**
-     * Delete old weather forecasts from the database
-     *
-     * @param string $model Model class (HourlyForecast::class or DailyForecast::class)
-     * @param \DateTime|string $olderThan Delete entries older than this threshold
-     */
-    private function deleteOldForecasts(string $model, $olderThan)
-    {
-        $threshold = $olderThan instanceof \DateTime ? $olderThan : now()->subDays($olderThan);
-
-        $model::where('created_at', '<', $threshold)->delete();
-    }
-
 }
