@@ -78,7 +78,7 @@ class ApiController extends Controller
             })
             ->orderBy('local_date')
             ->orderBy('local_time')
-            ->take(5)
+            ->take(23)
             ->get();
 
         if ($weather->isEmpty()) {
@@ -222,50 +222,6 @@ class ApiController extends Controller
             ->take(24)
             ->get();
     }
-
-
-    /**
-     * Call Tomorrow.io API (more debug-friendly)
-     *
-     * If $debug === true the method returns an array with a "_debug" key on failure,
-     * allowing you to call endpoints with ?debug=1 and receive debug info in the HTTP response.
-     */
-    // private function fetchApiData(string $location): ?array
-    // {
-    //     $apiKey = config('services.tomorrowio.key');
-
-    //     $response = Http::withOptions(['verify_host' => false])
-    //         ->get("https://api.tomorrow.io/v4/weather/forecast", [
-    //             'location' => $location,
-    //             'apikey' => $apiKey,
-    //         ]);
-
-    //     if (!$response->successful()) {
-    //         \Log::channel('stderr')->error('Tomorrow.io API error', [
-    //             'status' => $response->status(),
-    //             'body' => $response->body(),
-    //         ]);
-    //         return null;
-    //     }
-
-    //     $data = $response->json();
-
-    //     $flatten = fn($timelines) => collect($timelines ?? [])->map(function ($item) {
-    //         $date = substr($item['time'], 0, 10);
-    //         $time = substr($item['time'], 11, 5);
-
-    //         return array_merge(
-    //             ['date' => $date, 'time' => $time],
-    //             $item['values'] ?? []
-    //         );
-    //     })->all();
-
-    //     return [
-    //         'daily' => $flatten($data['timelines']['daily'] ?? []),
-    //         'hourly' => $flatten($data['timelines']['hourly'] ?? []),
-    //         'minutely' => $flatten($data['timelines']['minutely'] ?? []),
-    //     ];
-    // }
 
     private function fetchApiData(string $location): ?array
     {

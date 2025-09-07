@@ -9,12 +9,21 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AppFooter: typeof import('./components/AppFooter.vue')['default']
-    CurrentWeather: typeof import('./components/Widgets/CurrentWeather.vue')['default']
-    DailyForecast: typeof import('./components/Widgets/DailyForecast.vue')['default']
+    CurrentWeather: typeof import('./components/Widgets/CurrentWeatherCard.vue')['default']
+    CurrentWeatherCard: typeof import('./components/Widgets/CurrentWeatherCard.vue')['default']
+    DailyForecast: typeof import('./components/Widgets/WeekForecastCard.vue')['default']
+    DayForecast: typeof import('./components/Widgets/DayForecastCard.vue')['default']
+    DayForecastCard: typeof import('./components/Widgets/DayForecastCard.vue')['default']
     HourlyForecast: typeof import('./components/Widgets/HourlyForecast.vue')['default']
     LocalWeather: typeof import('./components/LocalWeather.vue')['default']
+    MoonGraphWidget: typeof import('./components/Widgets/MoonGraphWidget.vue')['default']
+    MoonPosition: typeof import('./components/Widgets/MoonGraphWidget.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SunGraphWidget: typeof import('./components/Widgets/SunGraphWidget.vue')['default']
+    SunPosition: typeof import('./components/Widgets/SunPosition.vue')['default']
     WeatherIcon: typeof import('./components/WeatherIcon.vue')['default']
+    WeekForecast: typeof import('./components/Widgets/WeekForecastCard.vue')['default']
+    WeekForecastCard: typeof import('./components/Widgets/WeekForecastCard.vue')['default']
   }
 }

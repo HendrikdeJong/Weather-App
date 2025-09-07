@@ -4,7 +4,12 @@ import api from './api'
 export interface HourlyForecast {
   [key: string]: any
   location: string
-  time: string
+  date: string | null
+  time: string | null
+  local_datetime: string | null
+  local_date: string | null
+  local_time: string | null
+  timezone: string | null
   altimeterSetting: number | null
   cloudBase: number | null
   cloudCeiling: number | null
@@ -40,7 +45,12 @@ export interface HourlyForecast {
 export interface DailyForecast {
   [key: string]: any
   location: string
+  date: string | null
   time: string | null
+  local_datetime: string | null
+  local_date: string | null
+  local_time: string | null
+  timezone: string | null
   altimeterSettingAvg: number | null
   altimeterSettingMax: number | null
   altimeterSettingMin: number | null

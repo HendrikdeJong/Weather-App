@@ -12,12 +12,26 @@
   const location = useLocationStore()
   const app = useAppStore()
   let intervalId: number | undefined
-
   async function loadWeather() {
     if (location.latitude !== null && location.longitude !== null) {
       await app.fetchWeather(undefined, location.latitude, location.longitude)
     }
   }
+
+  // Watch for location changes and load weather immediately when available
+  import { watch } from 'vue'
+
+  watch(
+    () => [location.latitude, location.longitude],
+    (newVal, oldVal) => {
+      const [lat, lon] = newVal
+      const [prevLat, prevLon] = oldVal || []
+      if (lat !== null && lon !== null && (lat !== prevLat || lon !== prevLon)) {
+        loadWeather()
+      }
+    },
+    { immediate: true }
+  )
 
   onMounted(async () => {
     await location.fetchLocation()
