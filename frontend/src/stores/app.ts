@@ -2,12 +2,11 @@
 import { defineStore } from 'pinia'
 import { WeatherService } from '@/services/weather'
 import type { HourlyForecast, DailyForecast } from '@/services/weather'
-import { th } from 'vuetify/locale'
 
 export const useAppStore = defineStore('app', {
   state: () => ({
     currentWeather: null as HourlyForecast | null,
-    DayForecast: null as HourlyForecast[] | null,
+    DayForecast: [] as HourlyForecast[],
     WeekForecast: [] as DailyForecast[],
     loading: false,
     error: null as string | null,

@@ -22,26 +22,26 @@ trait Location
     private function fetchLatLonLocation(float $lat, float $lon): ?string
     {
         $response = Http::withHeaders([
-            'User-Agent' => 'MyWeatherApp/1.0 (myemail@example.com)', // required
-            'Accept' => 'application/json', // 👈 force JSON response
+            'User-Agent' => 'MyWeatherApp/1.0 (myemail@example.com)',
+            'Accept' => 'application/json',
         ])->withOptions(['verify_host' => false])->get("https://nominatim.openstreetmap.org/reverse", [
                     'lat' => $lat,
                     'lon' => $lon,
-                    'format' => 'json',// required, else will return xml
+                    'format' => 'json',
                     'addressdetails' => 1,
                 ]);
 
-
         if (!$response->successful()) {
-            logger()->error('Nominatim error', ['status' => $response->status(), 'body' => $response->body()]);
-            return null;
+            abort(404, $response->body());
         }
 
         $address = $response->json()['address'] ?? [];
 
-        $location = $address['city']
+        // Only use town or village, fallback to other fields if both missing
+        $location =
+            $address['village']
             ?? $address['town']
-            ?? $address['village']
+            ?? $address['city']
             ?? $address['hamlet']
             ?? $address['municipality']
             ?? $address['county']

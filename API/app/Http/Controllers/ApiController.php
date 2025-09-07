@@ -16,31 +16,6 @@ class ApiController extends Controller
     use Helpers, Location;
 
     /**
-     * Get 5-day daily forecast for a location
-     */
-    public function getDailyForecast(Request $request)
-    {
-
-        $location = $this->getLocation($request->validate($this->validationRules()));
-        if (!$location) {
-            return response()->json(['error' => 'Invalid location'], 422);
-        }
-
-        $weather = DailyForecast::where('location', $location)
-            ->where('date', now()->toDateString())
-            ->take(5)
-            ->get();
-
-        if ($weather->isEmpty()) {
-            $weather = $this->updateDailyForecast($location);
-        }
-
-        return $weather->isEmpty()
-            ? $this->errorResponse()
-            : response()->json($weather);
-    }
-
-    /**
      * Get current weather for a location
      */
     public function getCurrentWeather(Request $request)
@@ -50,6 +25,7 @@ class ApiController extends Controller
         if (!$location) {
             return response()->json(['error' => 'Invalid location'], 422);
         }
+        // return response()->json($location, 422);
 
         $weather = HourlyForecast::where('location', $location)
             ->where('date', now()->toDateString())
@@ -62,8 +38,40 @@ class ApiController extends Controller
 
         return $weather
             ? response()->json($weather)
-            : $this->errorResponse();
+            : response()->json(['error' => 'Could not retrieve current weather data', 'weather' => $weather], 404);
+
+        // return $weather
+        //     ? response()->json($weather)
+        //     : response()->json(['error' => 'Could not retrieve current weather data'], 404);
     }
+
+    /**
+     * Get 5-day daily forecast for a location
+     */
+    public function getDailyForecast(Request $request)
+    {
+
+        $location = $this->getLocation($request->validate($this->validationRules()));
+        if (!$location) {
+            return response()->json(['error' => 'Invalid location'], 422);
+        }
+
+        $weather = DailyForecast::where('location', $location)
+            ->where('date', now()->toDateString())
+            ->orderBy('time')
+            ->take(5)
+            ->get();
+
+        if ($weather->isEmpty()) {
+            $weather = $this->updateDailyForecast($location);
+        }
+
+        return $weather->isEmpty()
+            ? response()->json(['error' => 'could not retrieve daily forecast data'], 404)
+            : response()->json($weather);
+    }
+
+
 
     /**
      * Get next 5-hour hourly forecast for a location
@@ -87,7 +95,7 @@ class ApiController extends Controller
         }
 
         return $weather->isEmpty()
-            ? $this->errorResponse()
+            ? response()->json(['error' => 'could not retrieve hourly forecast data'], 404)
             : response()->json($weather);
     }
 
@@ -98,22 +106,32 @@ class ApiController extends Controller
     {
         $apiData = $this->fetchApiData($location);
 
-        if (!$apiData || !isset($apiData['daily']) || !is_array($apiData['daily'])) {
+        if (!$apiData || empty($apiData['daily'])) {
             return collect();
         }
 
+        // Extract dates we’re about to insert
+        $dates = collect($apiData['daily'])->pluck('date')->unique();
+
+        // Delete existing forecasts for those dates
         DailyForecast::where('location', $location)
-            ->whereIn('date', collect($apiData['daily'])->pluck('date'))
+            ->whereIn('date', $dates)
             ->delete();
 
+        // Insert new ones
         foreach ($apiData['daily'] as $forecast) {
-            DailyForecast::create(array_merge(
-                ['location' => $location],
-                $forecast
-            ));
+            DailyForecast::create([
+                'location' => $location,
+                'date' => $forecast['date'],
+                'time' => $forecast['time'] ?? '00:00',
+                // merge values dynamically
+                ...$forecast,
+            ]);
         }
 
+        // Always return latest 5 days from today
         return DailyForecast::where('location', $location)
+            ->where('date', '>=', now()->toDateString())
             ->orderBy('date')
             ->take(5)
             ->get();
@@ -126,27 +144,49 @@ class ApiController extends Controller
     {
         $apiData = $this->fetchApiData($location);
 
-        if (!$apiData || !isset($apiData['hourly']) || !is_array($apiData['hourly'])) {
+        if (!$apiData || empty($apiData['hourly'])) {
             return collect();
         }
 
-        HourlyForecast::where('location', $location)
-            ->whereIn('date', collect($apiData['hourly'])->pluck('date'))
-            ->delete();
+        // Extract dates & times
+        $deleteConditions = collect($apiData['hourly'])->map(fn($f) => [
+            'date' => $f['date'],
+            'time' => $f['time'],
+        ]);
 
-        foreach ($apiData['hourly'] as $forecast) {
-            HourlyForecast::create(array_merge(
-                ['location' => $location],
-                $forecast
-            ));
+        // Delete only matching rows (date + time)
+        foreach ($deleteConditions as $cond) {
+            HourlyForecast::where('location', $location)
+                ->where('date', $cond['date'])
+                ->where('time', $cond['time'])
+                ->delete();
         }
 
-        return HourlyForecast::where('location', $location)
-            ->where('date', now()->toDateString())
-            ->orderBy('time')
-            ->get();
+        // Insert new forecasts
+        foreach ($apiData['hourly'] as $forecast) {
+            HourlyForecast::create([
+                'location' => $location,
+                'date' => $forecast['date'],
+                'time' => $forecast['time'],
+                ...$forecast,
+            ]);
+        }
 
+        // Return upcoming 24 hours from "now"
+        return HourlyForecast::where('location', $location)
+            ->where(function ($q) {
+                $q->where('date', '>', now()->toDateString())
+                    ->orWhere(function ($q2) {
+                        $q2->where('date', now()->toDateString())
+                            ->where('time', '>=', now()->format('H:i'));
+                    });
+            })
+            ->orderBy('date')
+            ->orderBy('time')
+            ->take(24)
+            ->get();
     }
+
 
     /**
      * Call Tomorrow.io API (more debug-friendly)

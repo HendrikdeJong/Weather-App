@@ -3,6 +3,7 @@ import api from './api'
 
 export interface HourlyForecast {
   [key: string]: any
+  location: string
   time: string
   altimeterSetting: number | null
   cloudBase: number | null
@@ -38,6 +39,7 @@ export interface HourlyForecast {
 
 export interface DailyForecast {
   [key: string]: any
+  location: string
   time: string | null
   altimeterSettingAvg: number | null
   altimeterSettingMax: number | null
@@ -138,7 +140,6 @@ export interface DailyForecast {
   windSpeedMax: number | null
   windSpeedMin: number | null
 }
-
 export const WeatherService = {
   async getCurrentWeather(params: { city?: string; lat?: number; lon?: number }) {
     if (
@@ -164,7 +165,7 @@ export const WeatherService = {
         'Provide either city or both lat and lon, not both or incomplete coordinates.'
       )
     }
-    const { data } = await api.get<DailyForecast[]>('/weather/forecast/weekly', {
+    const { data } = await api.get<DailyForecast[]>('/weather/forecast/daily', {
       params,
     })
     return data

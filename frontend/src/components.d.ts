@@ -9,8 +9,12 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AppFooter: typeof import('./components/AppFooter.vue')['default']
+    CurrentWeather: typeof import('./components/Widgets/CurrentWeather.vue')['default']
+    DailyForecast: typeof import('./components/Widgets/DailyForecast.vue')['default']
+    HourlyForecast: typeof import('./components/Widgets/HourlyForecast.vue')['default']
     LocalWeather: typeof import('./components/Widgets/LocalWeather.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    WeatherIcon: typeof import('./components/WeatherIcon.vue')['default']
   }
 }

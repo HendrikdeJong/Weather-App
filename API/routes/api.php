@@ -11,4 +11,3 @@ Route::get('/user', function (Request $request) {
 Route::get('/weather/forecast/daily', [ApiController::class, "getDailyForecast"]);
 Route::get('/weather/forecast/hourly', [ApiController::class, "getHourlyForecast"]);
 Route::get('/weather/current', [ApiController::class, "getCurrentWeather"]);
-Route::get('/weather', [ApiController::class, "getCurrentWeather"]);

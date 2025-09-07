@@ -19,17 +19,6 @@ trait Helpers
         ];
     }
 
-    /**
-     * Standardized error response, optionally including debug info
-     */
-    private function errorResponse(string $message = 'Unable to fetch weather data', array $debug = []): JsonResponse
-    {
-        $response = ['error' => $message];
 
-        if (!empty($debug)) {
-            $response['_debug'] = $debug;
-        }
 
-        return response()->json($response, 500);
-    }
 }
