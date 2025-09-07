@@ -1,7 +1,8 @@
 <template>
   <v-card
     class="pa-6 rounded-3xl d-flex flex-column align-center justify-center"
-    :style="{ background: currentBackground, color: colors.textPrimary }"
+    :style="{ background: currentBackground }"
+    theme="dark"
   >
     <div class="text-center">
       <p class="text-h2 font-weight-bold">{{ current?.temperature }}°</p>
