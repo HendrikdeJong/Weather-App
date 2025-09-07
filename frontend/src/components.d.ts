@@ -12,7 +12,7 @@ declare module 'vue' {
     CurrentWeather: typeof import('./components/Widgets/CurrentWeather.vue')['default']
     DailyForecast: typeof import('./components/Widgets/DailyForecast.vue')['default']
     HourlyForecast: typeof import('./components/Widgets/HourlyForecast.vue')['default']
-    LocalWeather: typeof import('./components/Widgets/LocalWeather.vue')['default']
+    LocalWeather: typeof import('./components/LocalWeather.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     WeatherIcon: typeof import('./components/WeatherIcon.vue')['default']

@@ -50,6 +50,19 @@ trait Location
 
         return $location;
     }
+    private function getTimezoneOffset(float $lat, float $lon): ?string
+    {
+        $response = Http::get("https://timeapi.io/api/TimeZone/coordinate", [
+            'latitude' => $lat,
+            'longitude' => $lon,
+        ]);
 
+        if (!$response->successful()) {
+            return null;
+        }
+
+        $data = $response->json();
+        return $data['timeZone'] ?? null; // e.g. "Europe/Amsterdam"
+    }
 
 }

@@ -21,7 +21,7 @@
   const src = computed(() => {
     if (props.code === null) return null
     // Example: map code to icon file name
-    return `/icons/weather-${props.code}.png`
+    return `../assets/weather-icons/${props.code}.png`
   })
 </script>
 

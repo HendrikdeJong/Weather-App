@@ -2,7 +2,7 @@
   <v-card class="pa-4 rounded-xl">
     <div class="d-flex justify-space-between align-center">
       <div>
-        <h2 class="text-h6 font-weight-bold">{{ current?.city }}</h2>
+        <h2 class="text-h6 font-weight-bold">{{ current?.location }}</h2>
         <p class="text-caption text-grey">{{ current?.time }}</p>
       </div>
       <WeatherIcon :code="current?.weatherCode ?? null" :size="72" />
@@ -28,11 +28,4 @@
 
   const store = useAppStore()
   const current = computed(() => store.currentWeather)
-
-  const cityLabel = 'Local Weather'
-  const formattedDate = new Date().toLocaleString([], {
-    weekday: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 </script>

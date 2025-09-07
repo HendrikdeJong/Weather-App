@@ -14,7 +14,12 @@ return new class extends Migration {
             $table->id();
             $table->timestamps();
             $table->string("location");
-            $table->date("time")->nullable();
+            $table->string("date")->nullable();
+            $table->string("time")->nullable();
+            $table->string('local_datetime')->nullable();
+            $table->date('local_date')->nullable();
+            $table->string('local_time')->nullable();
+            $table->string('timezone')->nullable();
             $table->float("altimeterSetting")->nullable();
             $table->float("cloudBase")->nullable();
             $table->float("cloudCeiling")->nullable();

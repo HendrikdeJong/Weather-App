@@ -9,7 +9,12 @@ class HourlyForecast extends Model
     protected $table = "hourly_forecasts";
     protected $fillable = [
         "location",
+        "date",
         "time",
+        "local_datetime",
+        "local_date",
+        "local_time",
+        "timezone",
         "altimeterSetting",
         "cloudBase",
         "cloudCeiling",

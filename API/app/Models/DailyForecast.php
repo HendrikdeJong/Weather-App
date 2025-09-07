@@ -10,7 +10,12 @@ class DailyForecast extends Model
     protected $hidden = ['id'];
     protected $fillable = [
         "location",
+        "date",
         "time",
+        "local_datetime",
+        "local_date",
+        "local_time",
+        "timezone",
         "altimeterSettingAvg",
         "altimeterSettingMax",
         "altimeterSettingMin",
